@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Include Phaser game engine script -->
+    <script src="phaser.js"></script>
+    <!-- Page title and CSS code -->
+    <title>Disc Throw!</title>
+    <style>
+
+        table {
+            table-layout: auto;
+        }
+        .help-image {
+            width: 100px;
+            text-align:center;
+        }
+        td {
+            width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="help">
+        <h1>Disc Throw: An Epic Experience</h1>
+        <h2>How to play</h2>
+
+        The goal of the game is to get the blue puck onto the center of the target.
+        Unfortunately, you can't just drag it there. You'll have to use the three yellow pucks
+        provided, plus your amazing physics skills, to move the blue puck to the target.
+
+        <p>
+        As you keep playing you'll advance through the levels! Try to get
+        as close to the center of the target as possible to earn more points.
+        <h2>The objects</h2>
+        <table border="1">
+            <tr>
+                <th class="help-image">
+                    Type of object
+                </th>
+                <th>
+                    Description
+                </th>
+            </tr>
+            <tr>
+                <td class="help-image">
+                    <img alt="Picture of puck" src="puck.svg"
+                        style="width:40%;" />
+                </td>
+                <td>
+                    This is a puck. Click and drag on it to hit it!
+                    By moving your mouse around it and away from it, you can alter
+                    its angle and direction.
+                </td>
+            </tr>
+            <tr>
+                <td class="help-image">
+                    <img alt="Picture of puck" src="gum.svg"
+                        style="width:100%;" />
+                </td>
+                <td>
+                    Gum makes you stick!
+                </td>
+            </tr>
+            <tr>
+                <td class="help-image">
+                    <img alt="Trap" src="Black-Hole.svg"
+                        style="width: 75%;"/>
+                </td>
+                <td>
+                    This is a black hole! Don't whack your puck here
+                    or you'll be out of luck.
+                </td>
+            </tr>
+            <tr>
+                <td class="help-image">
+                    <img alt="Picture of puck" src="Screw head.svg"
+                        style="width:50%;" />
+                </td>
+                <td>
+                    Whoops! Somebody put a screw here. Your puck will
+                    bounce off of these.
+                </td>
+            </tr>
+            <tr>
+                <td class="help-image">
+                    <img alt="Picture of puck" src="tinted-puck.svg"
+                        style="width:100%;" />
+                </td>
+                <td>
+                    This is a very special puck. You need to use the yellow pucks
+                    to move this one onto the target. Make sure that you avoid
+                    the dangerous obstacles mentioned above!
+                </td>
+        </table>
+        
+    </div>
+    <!-- Container for Phaser canvas -->
+    <h2>The game</h2>
+    <div id="container"></div>
+    <!-- Game code -->
+    <script>
+    
+    /* Main game code. Each variable and function has a summary. Functions have
+     * more descriptive code inside.
+     * 
+     */
+    
+    
+    var points = 0;
+    /**
+     * Number of pucks available to user.
+     * @type Array
+     */
+    var numPucks = 3;
+    /**
+     * The logical size of a puck. If this value is changed puck.svg must be updated
+     * as well.
+     * @type Number
+     */
+    var puckWidth = 293;
+    /**
+     * The names of the levels.
+     * @type Number
+     */
+    var levelNames = [ 'there is no 0', 'Practice makes perfect.', 'Sticky gum!', 'Don\'t get trapped!', 'Now bumping occurs.', 'empty level'];
+    /**
+     * Default bounciness of a puck, for bouncing off other objects.
+     * @type Number
+     */
+    var puckBounce = 0.9;
+    /**
+     * This is used as a dynamic list for physics-enabled level objects. We use this
+     * to generate colliders.
+     * @type Array
+     */
+    var collidableItems = new Array();
+    /**
+     * Default friction of a puck.
+     * @type Number
+     */
+    var puckFriction = 400;
+    /* Maximum level */
+    var MAX_LEVEL = 5;
+    /**
+     * The starting level. Unless you are debugging a level this should be set to 1.
+     * 0 is not a valid level.
+     * @type Number
+     */
+    var level = 1;
+    
+    
+   
+    /**
+     * A hardcoded value for visibility based on the Phaser 3 documentation.
+     * @type Number
+     */
+    var RENDER_VISIBLE = 0x1;
+    /**
+     * This is an array holding the movable pucks and the goal puck.
+     * @type Array
+     */
+    var pucks;
+    /**
+     * Number of shots.
+     * 
+     */
+    var shots = 0;
+    /**
+     * This variable is true once the game is over.
+     */
+    var gameIsOver = false;
+    /**
+     * If this is false, update() will return immediately. Used to wait for sounds
+     * to play.
+     */
+    var shouldUpdate = true;
+    /**
+     * Phaser 3 configuration data.
+     */
+    var config = {
+        type: Phaser.WEBGL,
+        width: 800,
+        height: 600,
+        parent: 'container',
+        physics: {
+            default: 'arcade',
+            arcade: {
+                //debug: true,
+                gravity: { y: 0 }
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+    
+    /**
+     * A LevelItem is an object holding information about an obstacle in the game.
+     * @param {String} name
+     * @param {Number} x
+     * @param {Number} y
+     * @param {Number} scale
+     * @param {bool} friction
+     * @param {bool} physic
+     * @param {bool} isCircle
+     * @returns {LevelItem}
+     */
+    function LevelItem(name, x, y, scale = 1, friction = puckFriction, physic = false, isCircle = 0) {
+        this.name = name;
+        this.x = x;
+        this.y = y;
+        this.scale = scale;
+        this.obj = null;
+        this.friction = friction;
+        this.physic = physic;
+        this.circle = isCircle;
+    }
+    /*
+     * This is an array of LevelItems.
+     * @type Array of LevelItems
+     */
+    var levelItems =
+    [
+        // Level 0
+        [],
+        // Level 1
+        [],
+        // Level 2
+        [
+            new LevelItem('gum', 200, 150, 0.2, puckFriction * 300)
+        ],
+        // Level 3
+        [
+            new LevelItem('hole', 200, 150, 0.07)
+        ],
+        [
+            new LevelItem('bumper', 200, 150, 1, puckFriction, true, 16)
+        ]
+    ];
+    
+    /**
+     * Game object. This holds the complete state of the game.
+     * @type Phaser.Game
+     */
+    var game = new Phaser.Game(config);
+
+    /* Call this with "await sleep(milliseconds)". Must be an async function. */
+    function sleep (time) {
+        return new Promise((resolve) => setTimeout(resolve, time));
+    }
+    /**
+     * This function is responsible for loading images and sound into the game engine.
+     * 
+     */
+    function preload ()
+    {
+        this.load.image('rink', 'Hockey-Rink.svg');
+        this.load.image('puck', 'puck.svg');
+        this.load.image('pullback', 'pullback.svg');
+        this.load.image('target', 'target.png');
+        this.load.image('background', 'background.svg');
+        this.load.image('happy', 'happy.png');
+
+        this.load.image('red', 'red.png');
+        this.load.image('gum', 'gum.svg');
+        this.load.image('hole', 'Black-Hole.png');
+        this.load.image('bumper', 'screw.png');
+        
+        this.load.audio('pop', 'pop.mp3');
+        this.load.audio('into_trap', 'into_trap.mp3');
+        this.load.audio('hit', 'hit.mp3');
+        this.load.audio('wrong1', 'wrong01.mp3');
+        this.load.audio('cheering', 'cheering.ogg');
+        this.load.audio('right', 'right.mp3');
+    }
+    /**
+     * Convert degrees to radians.
+     * @param {Number} angle
+     * @returns {Number}
+     */
+    function rad (angle) {
+      return angle * (Math.PI / 180);
+    }
+    /**
+     * Convert radians to degrees.
+     * @param {Number} angle
+     * @returns {Number}
+     */
+    function deg (angle) {
+      return angle / (Math.PI / 180);
+    }
+    
+    /**
+     * This function is called during the dragging of a puck to update some variables and
+     * do some math calculations.
+     * @param {type} pointer Phaser mouse object
+     * @param {type} gameObject the puck being dragged
+     * @param {type} dragX unused
+     * @param {type} dragY unused
+     */
+    function doDragUpdate(pointer, gameObject, dragX, dragY) {
+        if(pucksMoving()) return;
+        let cursor = pointer;
+        
+        
+        /* Get the angle and distance of the cursor relative to the puck's current position */
+        
+        angle = Phaser.Math.Angle.Between(gameObject.x, gameObject.y, cursor.x
+          + self.cameras.main.scrollX, cursor.y + self.cameras.main.scrollY);
+        distance = Phaser.Math.Distance.Between(gameObject.x, gameObject.y, cursor.x
+          + self.cameras.main.scrollX, cursor.y + self.cameras.main.scrollY);
+  
+        /* Constrain distance */
+        var realDistance = Math.min(distance, 400);
+        realDistance = Math.max(realDistance, 20);
+        dragImg.rotation  = angle + rad(90);
+        dragImg.setScale(0.05, 0.001 * realDistance);
+        
+        /* Hide the dragging handle if the object hasn't been dragged far enough. */
+        if(distance < 30)
+            dragImg.renderFlags &= ~RENDER_VISIBLE;
+        else
+            dragImg.renderFlags |= RENDER_VISIBLE;
+    }
+    /* Play the collision sound if it's not already playing. */
+    function playHit ()
+    {
+        if(!hit.isPlaying)
+            hit.play();
+    }
+    /**
+     * Generate a random number between min and max.
+     */
+    function genRandom(min, max)
+    {
+        var random = Math.random() * (+max - +min) + +min; 
+        return random;
+    }
+    /**
+     * Check if any pucks are moving.
+     */
+    function pucksMoving ()
+    {
+        for(var i = 0; i < pucks.children.entries.length; i++)
+        {
+            if(!notMoving(pucks.children.entries[i]))
+                return true;
+        }
+        return false;
+    }
+    /* Enable or disable input on a given puck. */
+    function enablePuckInput (puck, enab)
+    {
+        if(enab)
+            puck.setInteractive();
+        else
+            puck.disableInteractive();
+        puck.inputEnabled = enab;
+    }
+    /* Enable or disable input on all pucks. */
+    function enablePucksInput(enab)
+    {
+        for(var i = 0; i < pucks.children.entries.length; i++)
+        {
+            enablePuckInput(pucks.children.entries[i], enab);
+        }
+    }
+    /* Check if the game is over (are all pucks off the board?). */
+    function gameOver ()
+    {
+        /* The game's over if we finished all the levels */
+        if(level === MAX_LEVEL)
+            return true;
+        /* If there is only 1 puck on the board then
+         * the game must be over. Cases:
+         * 1. The only puck is a yellow one, in which case there is no goal puck
+         * to hit into the target.
+         * 2. The only puck is the goal puck, in which case there is nothing to hit it.
+         */
+        if(pucks.children.entries.length < 2)
+            return true;
+        /* Otherwise, there are at least two pucks. Now we make sure the goal
+         * puck is still present. If it is, there must be at least one yellow puck
+         * as well as the goal puck.
+         */
+        for(var i = 0; i < pucks.children.entries.length; i++)
+        {
+            if(pucks.children.entries[i] === goalPuck)
+                return false;
+        }
+        return true;
+    }
+    /* Create all scene objects and generate colliders. */
+    /* It's called every time we restart the scene. */
+    function create ()
+    {
+        shouldUpdate = true;
+        gameIsOver = false;
+        // Create sound objects
+        pop = this.sound.add('pop');
+        into_trap = this.sound.add('into_trap');
+        hit = this.sound.add('hit');
+        wrong1 = this.sound.add('wrong1');
+        cheering = this.sound.add('cheering');
+        correctSound = this.sound.add('right');
+        
+        
+        // Initialize lists and self object
+        collidableItems = new Array();
+        movingPucks = [];
+        self = this;
+        
+        shots = 0;
+         
+        // Create background
+        bkgd = this.add.image(400, 300, 'background');
+        bkgd.depth = 0;
+        
+        // Create groups
+        itemObjs = this.physics.add.group();
+        
+        
+        
+        pucks = this.physics.add.group();
+        
+        
+        // Create level title at top of screen
+        levelText = this.add.text(50, 16, 'Level ' + level + ': ' + levelNames[level], { fontSize: '24px', fill: '#000' });
+        levelText.depth = 2;
+        
+        // Create shots text
+        shotsText = this.add.text(50, 560, 'Shots: ' + shots, { fontSize: '24px', fill: '#000' });
+        shotsText.depth = 2;
+        
+        // Create points text
+        pointsText = this.add.text(600, 560, 'Points: ' + points, { fontSize: '24px', fill: '#000' });
+        pointsText.depth = 2;
+        
+        // Set background color of game
+        self.cameras.main.setBackgroundColor('#74d849');
+
+        // Some info
+        // Depth is used to control the Z-order of displayed objects.
+        // Currently used depth values:
+        // 0: target, obstacles
+        // 1: pucks
+        // 2: overlays (text, drag handle)
+        // 4+: popups (i.e. end of game)
+
+        // Generate pucks
+        for(var i = 0; i < numPucks; i++) {
+            var puck = this.physics.add.image(120 + i * 60, 320 + i * 10, 'puck');
+            pucks.add(puck);
+            // Each time this loop iterates the scale and mass get a bit bigger.
+            puck.setScale(0.1 + (0.04 * i));
+            puck.setCircle(160); // we want a circular body
+            // The larger pucks have a greater mass.
+            puck.body.mass = 1 + (0.04 * i);
+            // Collide with walls.
+            puck.body.setCollideWorldBounds(true);
+            puck.body.collideWorldBounds = true;
+            // Enable friction.
+            puck.body.setAllowDrag(true);
+            puck.body.setDrag(100, 100);
+            puck.body.setFriction(puckFriction, puckFriction);
+            enablePuckInput(puck, true);
+            puck.body.bounce.set(puckBounce, puckBounce);
+            
+            puck.depth = 1;
+            
+            
+            // Make the puck draggable with the mouse.
+            this.input.setDraggable(puck);
+        }
+        
+        // The goal puck is done seperately
+        goalPuck = this.physics.add.image(genRandom(300, 600), genRandom(100, 400), 'puck');
+        pucks.add(goalPuck);
+        goalPuck.setCircle(160);
+        goalPuck.tint = 0xff000000;
+        goalPuck.tintFill = true;
+        goalPuck.body.setCollideWorldBounds(true);
+        goalPuck.body.collideWorldBounds = true;
+        goalPuck.body.bounce.set(puckBounce, puckBounce);
+        goalPuck.body.setAllowDrag(true);
+        goalPuck.body.setDrag(100, 100);
+        goalPuck.body.setFriction(puckFriction, puckFriction);
+        goalPuck.body.mass = 0.5;
+        goalPuck.setScale(0.2);
+        
+        goalPuck.depth = 1;
+        
+        // Create target object (shrinks as levels get bigger)
+        target = this.physics.add.image(150, 400, 'target');
+        target.setCircle(310);
+        target.setScale(0.2 - (0.01*level));
+        target.depth = 0;
+        // Make this kinematic so it doesn't move on it's own, but still reacts
+        // to physics events. We don't put a collider on it because we don't want
+        // pucks bouncing off the target.
+        target.body.kinematic = true;
+        
+        
+
+        // If there are any items for this level, generate them now
+        if(typeof levelItems[level] !== 'undefined') {
+            for(var i = 0; i < levelItems[level].length; i++) {
+                var item = levelItems[level][i];
+                itemObj = this.physics.add.image(item.x, item.y, item.name);
+                
+                itemObj.depth = 0;
+                itemObj.setScale(item.scale);
+                itemObj.body.kinematic = true;
+                // Maybe we need a circular collider
+                if(item.circle > 0)
+                    itemObj.setCircle(item.circle);
+                itemObj.body.immovable = true;
+                itemObj.body.setFriction(item.friction, item.friction);
+                levelItems[level][i].obj = itemObj;
+                // If it's physics-enabled item then put it in collidableItems
+                if(item.physic) {
+                    collidableItems.push(itemObj);
+                } else
+                    itemObjs.add(itemObj);
+            } 
+        }
+        
+        // Create drag start callback
+        this.input.on('dragstart', function (pointer, gameObject) {
+            // Don't do anything if the puck is already moving
+            // This check should no longer be necessary as input is now disabled
+            // while pucks are moving
+               if(pucksMoving()) return;
+               
+               
+            // Disable physics (freezes the puck in it's current position)
+            gameObject.body.moves = false;
+            // Create dragging  handle
+            dragImg = self.add.image(gameObject.x, gameObject.y, 'pullback');
+            dragImg.setScale(0.05, 0.001);
+            dragImg.setOrigin(0.5, 1);
+            dragImg.depth = 2;
+            // Do initial calculations
+            doDragUpdate(pointer, gameObject, 0, 0);
+        });
+
+        // Create "while dragging" callback
+        this.input.on('drag', doDragUpdate);
+
+        // Create drag end callback
+        this.input.on('dragend', function (pointer, gameObject) {
+            if(pucksMoving()) return;
+            let cursor = pointer;
+            
+            // Do final calculations
+            doDragUpdate(pointer, gameObject, 0, 0);
+            // Re-enable physics
+            gameObject.body.moves = true;
+            
+            // If the drag image is visible, then emit a force on the puck
+            // Otherwise do nothing
+            if((dragImg.renderFlags & RENDER_VISIBLE) !== 0) {
+                self.physics.velocityFromAngle(deg(dragImg.rotation) + 90, distance * 3, gameObject.body.velocity);
+                particles = self.add.particles('red');
+                gameObject.myEmitter = particles.createEmitter({
+                    speed: 100,
+                    scale: { start: 0.1, end: 0 },
+                    blendMode: 'ADD',
+                    maxParticles: 100
+                });
+                gameObject.myEmitter.startFollow(gameObject);
+                movingPucks.push(gameObject);
+            }
+            dragImg.destroy();
+        });
+        
+        
+        // Generate colliders
+        this.physics.add.collider(pucks, pucks, playHit);
+        for(var i = 0; i < collidableItems.length; i++) {
+            this.physics.add.collider(pucks, collidableItems[i]);
+        }
+        // this.physics.add.collider(pucks, goalPuck);
+        // Set world bounds to be inside background. background.svg must be adjusted
+        // if this is changed.
+        this.physics.world.bounds = new Phaser.Geom.Rectangle(60, 60, 680, 480);
+        this.physics.world.setBoundsCollision(true, true, true, true);
+        this.physics.world.on('worldbounds', function(body, blockedUp, blockedDown, blockedLeft, blockedRight){
+            playHit();
+        },this);
+
+
+
+    }
+    // Check if game object is not moving
+    function notMoving (gobj) {
+        return gobj.body.velocity.x === 0 && gobj.body.velocity.y === 0;
+    }
+    // Calculate a single velocity value
+    function velNorm (gobj) {
+        return Math.sqrt(Math.pow(gobj.body.velocity.x, 2) + Math.pow(gobj.body.velocity.y, 2));
+    }
+    
+    // Stop all particle emission
+    function stopParticles () {
+        for(var i = 0; i < movingPucks.length; i++)
+        {
+            movingPucks[i].myEmitter.manager.destroy();
+        }
+    }
+    // Clear all members of a game object group
+    function clearGroup (group)
+    {
+        while(group.children.entries.length !== 0)
+        {
+            var entry = group.children.entries[0];
+            group.remove(entry);
+            entry.destroy();
+        }
+    }
+    // This function is invoked on every frame to update game state
+    function update () {
+        shotsText.text = 'Shots: ' + shots;
+        pointsText.text = 'Points: ' + points;
+        if(shouldUpdate === false) {
+            return;
+        }
+        // Check if the game is over
+        if(gameOver()) {
+            // Disable all input
+            enablePucksInput(false);
+            // If we just threw a puck into a trap, wait for that sound to finish.
+            // We'll keep re-entering this function until the sound finishes.
+            if(into_trap.isPlaying)
+                return;
+            
+            // This if statement is chained to the next one. Here is the logic:
+            // We want to play the final end game sound if the person lost all
+            // their pucks. So we check if the sound is already playing and return
+            // if it is. Otherwise play the sound and we keep re-entering this if statement.
+            if(level < MAX_LEVEL && wrong1.isPlaying) {
+                return;
+            }
+            if(level < MAX_LEVEL && !gameIsOver) {
+                gameIsOver = true;
+                wrong1.play();
+                return;
+            }
+            
+            // The user lost. Wait for them to click OK and then restart.
+            window.alert("Game over. Click OK to restart.");
+            points = 0;
+            self.scene.restart();
+            
+        }
+        
+        // Disable or enable puck input as necessary based on movement
+        
+        enablePucksInput(movingPucks.length === 0 && !pucksMoving());
+        
+        // Play a pop sound if movement just stopped
+        if(movingPucks.length !== 0 && !pucksMoving())
+        {
+            shots++;
+            pop.play();
+            stopParticles();
+            movingPucks = [];
+        }
+        
+        // Check whether the goal puck is on the target
+        
+        if(self.physics.overlap(goalPuck, target)) {
+          var closeness = Phaser.Math.Distance.Between(goalPuck.x,
+                    goalPuck.y, target.x, target.y);
+          // Check how close we are to the puck. When we stop if we are close enough
+          // calculate the accuracy and add it to the user's points.
+          if(closeness <= 47 && notMoving(goalPuck)) {
+              enablePucksInput(false);
+              correctSound.play();
+              points += 250+Math.round((60/closeness)*50);
+              happy = self.add.image(400, 200, 'happy');
+              happy.setScale(0.1);
+              /* Stop the update() loop from running again. We use a JavaScript promise
+               * to start the next level once the sound has finished.
+               */
+              shouldUpdate = false;
+              /* Use a sleep callback. We'll run the following code after 5 seconds
+               * (5000 milliseconds).
+               */
+              sleep(5000).then(() => {
+                /* If there's more levels to go advance the level. */
+                if((level+1) !== MAX_LEVEL) {
+                    level++;
+                    self.scene.restart();
+                } else {
+                    /* Stop the yellow dots from floating out. */
+                    stopParticles();
+                    /* Create the win screen and destroy other objects. */
+                    happy = self.add.image(400, 200, 'happy');
+                    happy.setScale(0.75, 0.75);
+                    happy.depth = 4;
+                    endtext = self.add.text(180, 420, "Congratulations!", { fontSize: '48px', fill: '#ffffff' });
+                    endtext.depth = 5;
+                    endtext2 = self.add.text(70, 470, "You've reached The End!", { fontSize: '48px', fill: '#ffffff' });
+                    endtext2.depth = 5;
+                    playagain = self.add.text(250, 520, "Refresh to play again.", { fontSize: '24px', fill: '#ffffff' });
+                    bkgd.destroy();
+                    clearGroup(pucks);
+                    clearGroup(itemObjs);
+                    collidableItems.filter(function(item) { 
+                        item.destroy();
+                        return false;
+                    });
+                    goalPuck.destroy();
+                    target.destroy();
+                    self.cameras.main.setBackgroundColor('#000000');
+                    // Start cheering
+                    cheering.play();
+                    /* 10 seconds later, stop the game engine. */
+                    sleep(10000).then(() => {
+                        game.destroy();
+                    });
+                    return;
+                }
+              });
+          }
+        }
+        
+        // Check interactions with obstacles in level
+        
+        if(typeof levelItems[level] !== 'undefined') {
+            for(var i = 0; i < levelItems[level].length; i++) {
+                var item = levelItems[level][i];
+                for(var j = 0; j < pucks.children.entries.length; j++)
+                {
+                    var puck = pucks.children.entries[j];
+                    // Check if we are overlapping an obstacle
+                    if(self.physics.overlap(puck, item.obj))
+                    {
+                        var closeness = Phaser.Math.Distance.Between(puck.x,
+                            puck.y, item.obj.x, item.obj.y);
+                        // If the person gets too close to a trap throw the puck
+                        // into it
+                        if(item.name === 'hole' && closeness <= 40) {
+                            if(!notMoving(puck)) {
+                                if(typeof(puck.myEmitter) !== 'undefined' && puck.myEmitter !== null)
+                                    puck.myEmitter.manager.destroy();
+                                puck.myEmitter = null;
+                                movingPucks = movingPucks.filter(function(item) { 
+                                    return item !== puck
+                                });
+                            }
+                            // Play the suction sound
+                            into_trap.play();
+                            // Get rid of the puck object
+                            puck.destroy();
+                        } else {
+                            // This is the logic for things like gum, etc.
+                            // We alter the friction on the puck to give
+                            // the impression of stickiness.
+                            puck.setFriction(item.friction, item.friction);
+                            puck.body.setDrag(2000, 2000);
+                        }
+                    } else {
+                        // They're not touching any objects. Use the default friction settings.
+                        puck.setFriction(puckFriction, puckFriction);
+                        puck.body.setDrag(100, 100);
+                    }
+                    
+                }
+            }
+        }
+    }
+    </script>
+
+</body>
+</html>

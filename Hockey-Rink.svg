@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="198.04181mm"
+   height="91.943375mm"
+   viewBox="0 0 198.04181 91.943375"
+   version="1.1"
+   id="svg2011"
+   inkscape:version="0.92.3 (unknown)"
+   sodipodi:docname="Hockey-Rink.svg">
+  <defs
+     id="defs2005" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.35"
+     inkscape:cx="-465.71429"
+     inkscape:cy="331.42858"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1295"
+     inkscape:window-height="744"
+     inkscape:window-x="65"
+     inkscape:window-y="24"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata2008">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-205.05663)">
+    <path
+       id="rect2206"
+       style="fill:none;stroke:#dd0000;stroke-width:1.05952394;stroke-linecap:round;stroke-linejoin:round;fill-opacity:1;stroke-opacity:1"
+       connector-curvature="0"
+       d="M 27.882387,205.58666 H 170.16206 c 15.10533,0 27.34998,10.93946 27.34998,24.43374 v 42.01583 c 0,13.49455 -12.24518,24.43401 -27.34998,24.43401 H 27.882387 c -15.10665,0 -27.35262503,-10.94052 -27.35262503,-24.43427 V 230.02014 C 0.53029097,216.52585 12.775737,205.58639 27.882387,205.58639 Z"
+       inkscape:connector-curvature="0" />
+  </g>
+</svg>
